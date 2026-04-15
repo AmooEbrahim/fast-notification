@@ -12,7 +12,8 @@ set -euo pipefail
 
 readonly VERSION='1.0.0'
 readonly DEFAULT_PORTS=(52345 52346 52347 52348 52349)
-readonly LOG_FILE=/var/log/fast-notification/listener.log
+readonly LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fast-notification/logs"
+readonly LOG_FILE="$LOG_DIR/listener.log"
 readonly CONFIG_DIR=/etc/fast-notification
 readonly CONFIG_FILE=/etc/fast-notification/service.conf
 readonly TEMPLATE_DIR=/etc/fast-notification/templates

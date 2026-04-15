@@ -10,14 +10,6 @@ ExecStart=/usr/local/bin/fast-notification/notification-listener
 Restart=always
 RestartSec=5
 
-# Create necessary directories
-ExecStartPre=/bin/mkdir -p /var/log/fast-notification
-ExecStartPre=/bin/mkdir -p /etc/fast-notification
-ExecStartPre=/bin/mkdir -p /etc/fast-notification/templates
-ExecStartPre=/bin/chmod 755 /var/log/fast-notification
-ExecStartPre=/bin/chmod 755 /etc/fast-notification
-ExecStartPre=/bin/chmod 755 /etc/fast-notification/templates
-
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fast-notification

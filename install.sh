@@ -18,10 +18,11 @@ set -euo pipefail
 readonly VERSION='1.0.0'
 readonly SERVICE_NAME='fast-notification'
 readonly INSTALL_DIR='/usr/local/bin/fast-notification'
-readonly CLI_BIN='/usr/local/bin/fast-notification'
+readonly CLI_BIN='/usr/local/bin/fast-notification/fast-notification'
 readonly CONFIG_DIR='/etc/fast-notification'
 readonly TEMPLATE_DIR='/etc/fast-notification/templates'
 readonly LOG_DIR='/var/log/fast-notification'
+readonly PROFILE_SCRIPT='/etc/profile.d/fast-notification.sh'
 readonly RAW_BASE='https://raw.githubusercontent.com/amooebrahim/fast-notification/main'
 
 show_help() {
@@ -161,6 +162,9 @@ do_install() {
     chmod 755 "$TEMPLATE_DIR"
     chmod 755 "$LOG_DIR"
 
+    echo "Adding to PATH..."
+    echo 'export PATH="/usr/local/bin/fast-notification:$PATH"' > "$PROFILE_SCRIPT"
+
     systemctl --user daemon-reload 2>/dev/null || true
 
     echo ""
@@ -191,6 +195,7 @@ do_uninstall() {
     rm -rf "$CONFIG_DIR"
     rm -rf "$LOG_DIR"
     rm -f /etc/systemd/user/fast-notification.service
+    rm -f "$PROFILE_SCRIPT"
 
     systemctl --user daemon-reload 2>/dev/null || true
 

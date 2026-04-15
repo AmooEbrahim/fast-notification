@@ -20,7 +20,6 @@ echo "Building package in: $BUILD_DIR"
 mkdir -p "$BUILD_DIR/usr/local/bin/fast-notification"
 mkdir -p "$BUILD_DIR/etc/fast-notification"
 mkdir -p "$BUILD_DIR/etc/fast-notification/templates"
-mkdir -p "$BUILD_DIR/var/log/fast-notification"
 mkdir -p "$BUILD_DIR/usr/share/doc/fast-notification"
 mkdir -p "$BUILD_DIR/etc/systemd/user"
 
@@ -70,8 +69,14 @@ A simple desktop notification service that listens on a TCP port for notificatio
 
 - Service config: /etc/fast-notification/service.conf
 - Templates: /etc/fast-notification/templates/
-- Logs: /var/log/fast-notification/listener.log
+- Logs: ~/.local/share/fast-notification/logs/listener.log
 - Port: 52345 (fixed after install)
+EOF
+
+mkdir -p "$BUILD_DIR/etc/profile.d"
+
+cat > "$BUILD_DIR/etc/profile.d/fast-notification.sh" <<'EOF'
+export PATH="/usr/local/bin/fast-notification:$PATH"
 EOF
 
 chmod +x "$BUILD_DIR/usr/local/bin/fast-notification"
@@ -80,7 +85,7 @@ chmod +x "$BUILD_DIR/usr/local/bin/fast-notification/notification-listener"
 chmod 755 "$BUILD_DIR/usr/local/bin/fast-notification"
 chmod 755 "$BUILD_DIR/etc/fast-notification"
 chmod 755 "$BUILD_DIR/etc/fast-notification/templates"
-chmod 755 "$BUILD_DIR/var/log/fast-notification"
+chmod 644 "$BUILD_DIR/etc/profile.d/fast-notification.sh"
 
 AFTER_INSTALL_SCRIPT="$BUILD_DIR/after-install.sh"
 cat > "$AFTER_INSTALL_SCRIPT" <<'EOF'
@@ -101,6 +106,7 @@ cat > "$BEFORE_REMOVE_SCRIPT" <<'EOF'
 #!/bin/bash
 systemctl --user stop fast-notification 2>/dev/null || true
 systemctl --user disable fast-notification 2>/dev/null || true
+rm -f /etc/profile.d/fast-notification.sh
 EOF
 
 build_package() {

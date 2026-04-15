@@ -11,10 +11,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 readonly INSTALL_DIR='/usr/local/bin/fast-notification'
-readonly CLI_BIN='/usr/local/bin/fast-notification'
+readonly CLI_BIN='/usr/local/bin/fast-notification/fast-notification'
 readonly CONFIG_DIR='/etc/fast-notification'
 readonly TEMPLATE_DIR='/etc/fast-notification/templates'
 readonly LOG_DIR='/var/log/fast-notification'
+readonly PROFILE_SCRIPT='/etc/profile.d/fast-notification.sh'
 
 echo "Installing Fast Notification Service from local files..."
 
@@ -48,6 +49,9 @@ chmod 755 "$LOG_DIR"
 
 echo "Installing systemd service..."
 cp fast-notification.service /etc/systemd/user/
+
+echo "Adding to PATH..."
+echo 'export PATH="/usr/local/bin/fast-notification:$PATH"' > "$PROFILE_SCRIPT"
 
 if command -v systemctl &>/dev/null; then
     systemctl --user daemon-reload 2>/dev/null || true
