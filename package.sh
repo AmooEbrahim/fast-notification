@@ -14,6 +14,7 @@ if ! command -v fpm &>/dev/null; then
 fi
 
 BUILD_DIR=$(mktemp -d)
+BUILD_OUTPUT_DIR="$(dirname "$0")/build"
 echo "Building package in: $BUILD_DIR"
 
 mkdir -p "$BUILD_DIR/usr/local/bin/fast-notification"
@@ -22,6 +23,8 @@ mkdir -p "$BUILD_DIR/etc/fast-notification/templates"
 mkdir -p "$BUILD_DIR/var/log/fast-notification"
 mkdir -p "$BUILD_DIR/usr/share/doc/fast-notification"
 mkdir -p "$BUILD_DIR/etc/systemd/user"
+
+mkdir -p "$BUILD_OUTPUT_DIR"
 
 cp fast-notification "$BUILD_DIR/usr/local/bin/fast-notification"
 cp create.sh "$BUILD_DIR/usr/local/bin/fast-notification/notification-create"
@@ -79,17 +82,8 @@ chmod 755 "$BUILD_DIR/etc/fast-notification"
 chmod 755 "$BUILD_DIR/etc/fast-notification/templates"
 chmod 755 "$BUILD_DIR/var/log/fast-notification"
 
-echo "Building .deb package..."
-fpm -s dir -t deb \
-    -n "$PACKAGE_NAME" \
-    -v "$VERSION" \
-    --description "$DESCRIPTION" \
-    --maintainer "$MAINTAINER" \
-    --url "https://github.com/amooebrahim/fast-notification" \
-    --category "utils" \
-    --depends "$DEPENDENCIES" \
-    --deb-no-default-config-files \
-    --after-install <(cat <<'EOFSCRIPT'
+AFTER_INSTALL_SCRIPT="$BUILD_DIR/after-install.sh"
+cat > "$AFTER_INSTALL_SCRIPT" <<'EOF'
 #!/bin/bash
 echo "Fast Notification Service installed successfully!"
 echo ""
@@ -100,21 +94,43 @@ echo "  fast-notification create   - Create new notification"
 echo ""
 echo "Config: /etc/fast-notification/service.conf"
 echo "Templates: /etc/fast-notification/templates/"
-EOFSCRIPT
-) \
-    --before-remove <(cat <<'EOFSCRIPT'
+EOF
+
+BEFORE_REMOVE_SCRIPT="$BUILD_DIR/before-remove.sh"
+cat > "$BEFORE_REMOVE_SCRIPT" <<'EOF'
 #!/bin/bash
 systemctl --user stop fast-notification 2>/dev/null || true
 systemctl --user disable fast-notification 2>/dev/null || true
-EOFSCRIPT
-) \
-    -C "$BUILD_DIR" \
-    .
+EOF
+
+build_package() {
+    local type="$1"
+    local deb_flags=""
+    if [ "$type" = "deb" ]; then
+        deb_flags="--deb-no-default-config-files"
+    fi
+    echo ""
+    echo "Building .$type package..."
+    fpm -s dir -t "$type" \
+        -n "$PACKAGE_NAME" \
+        -v "$VERSION" \
+        --description "$DESCRIPTION" \
+        --maintainer "$MAINTAINER" \
+        --url "https://github.com/amooebrahim/fast-notification" \
+        --category "utils" \
+        --depends "$DEPENDENCIES" \
+        $deb_flags \
+        --after-install "$AFTER_INSTALL_SCRIPT" \
+        --before-remove "$BEFORE_REMOVE_SCRIPT" \
+        -C "$BUILD_DIR" \
+        -p "$BUILD_OUTPUT_DIR/${PACKAGE_NAME}_${VERSION}.${type}"
+}
+
+build_package deb
+build_package rpm
 
 rm -rf "$BUILD_DIR"
 
 echo ""
-echo "Package built successfully: $(ls -1 fast-notification_*.deb)"
-echo ""
-echo "To install: sudo dpkg -i fast-notification_*.deb"
-echo "To fix missing dependencies: sudo apt-get install -f"
+echo "Packages built in: $BUILD_OUTPUT_DIR/"
+ls -1 "$BUILD_OUTPUT_DIR/"
