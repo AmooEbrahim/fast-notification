@@ -1,0 +1,193 @@
+#!/bin/bash
+# -----------------------------
+# Fast Notification CLI
+# -----------------------------
+
+set -euo pipefail
+
+readonly VERSION='1.0.0'
+readonly CONFIG_DIR='/etc/fast-notification'
+readonly TEMPLATE_DIR='/etc/fast-notification/templates'
+readonly LOG_FILE='/var/log/fast-notification/listener.log'
+readonly SERVICE_NAME='fast-notification'
+readonly BIN_DIR='/usr/local/bin/fast-notification'
+readonly LISTENER_BIN="$BIN_DIR/notification-listener"
+readonly CREATOR_BIN="$BIN_DIR/notification-create"
+
+show_help() {
+    cat <<EOF
+Fast Notification Service - Desktop notification manager
+
+Usage: fast-notification <command>
+
+Commands:
+    status      Show service status and information
+    start       Start the notification service
+    stop        Stop the notification service
+    restart     Restart the notification service
+    test        Send a test notification
+    create      Create a new notification configuration
+    log         Show recent log entries (tail)
+    -h, --help  Show this help message
+    -v, --version   Show version information
+
+Examples:
+    fast-notification status
+    fast-notification start
+    fast-notification test
+    fast-notification create
+
+For more details, see /etc/fast-notification/service.conf
+EOF
+}
+
+show_version() {
+    echo "fast-notification version $VERSION"
+}
+
+get_port() {
+    local port
+    port=$(grep '^NOTIFICATION_PORT=' "$CONFIG_DIR/service.conf" 2>/dev/null | cut -d'=' -f2)
+    echo "${port:-52345}"
+}
+
+is_service_active() {
+    systemctl --user is-active "$SERVICE_NAME" &>/dev/null
+}
+
+show_status() {
+    echo "=== Fast Notification Service ==="
+    echo ""
+    
+    if is_service_active; then
+        echo "Status: RUNNING"
+    else
+        echo "Status: STOPPED"
+    fi
+    
+    echo "Config: $CONFIG_DIR/service.conf"
+    echo "Templates: $TEMPLATE_DIR"
+    echo "Log: $LOG_FILE"
+    echo "Port: $(get_port)"
+    echo ""
+    
+    if [[ -d "$TEMPLATE_DIR" ]]; then
+        local count
+        count=$(find "$TEMPLATE_DIR" -name '*.conf' 2>/dev/null | wc -l)
+        echo "Notification templates: $count"
+    else
+        echo "Notification templates: (directory not created yet)"
+    fi
+    
+    echo ""
+    
+    if is_service_active; then
+        echo "Recent logs:"
+        if [[ -f "$LOG_FILE" ]]; then
+            tail -5 "$LOG_FILE" 2>/dev/null || echo "(no logs)"
+        else
+            echo "(log file not found)"
+        fi
+    fi
+}
+
+cmd_start() {
+    if is_service_active; then
+        echo "Service is already running."
+        return 0
+    fi
+    
+    systemctl --user start "$SERVICE_NAME"
+    echo "Service started."
+}
+
+cmd_stop() {
+    if ! is_service_active; then
+        echo "Service is not running."
+        return 0
+    fi
+    
+    systemctl --user stop "$SERVICE_NAME"
+    echo "Service stopped."
+}
+
+cmd_restart() {
+    systemctl --user restart "$SERVICE_NAME"
+    echo "Service restarted."
+}
+
+cmd_test() {
+    local port
+    port=$(get_port)
+    
+    echo "Sending test notification to port $port..."
+    
+    if command -v nc &>/dev/null; then
+        echo "test.conf" | nc localhost "$port" 2>/dev/null && echo "Test notification sent!" || echo "Failed to send test notification. Is the service running?"
+    else
+        echo "Error: nc (netcat) is not installed."
+        return 1
+    fi
+}
+
+cmd_create() {
+    if [[ ! -x "$CREATOR_BIN" ]]; then
+        echo "Error: notification-create not found at $CREATOR_BIN"
+        return 1
+    fi
+    
+    "$CREATOR_BIN"
+}
+
+cmd_log() {
+    if [[ ! -f "$LOG_FILE" ]]; then
+        echo "Log file not found: $LOG_FILE"
+        return 1
+    fi
+    
+    tail -f "$LOG_FILE"
+}
+
+main() {
+    if [[ $# -eq 0 ]]; then
+        show_help
+        return 0
+    fi
+    
+    case "$1" in
+        -h|--help)
+            show_help
+            ;;
+        -v|--version)
+            show_version
+            ;;
+        status)
+            show_status
+            ;;
+        start)
+            cmd_start
+            ;;
+        stop)
+            cmd_stop
+            ;;
+        restart)
+            cmd_restart
+            ;;
+        test)
+            cmd_test
+            ;;
+        create)
+            cmd_create
+            ;;
+        log)
+            cmd_log
+            ;;
+        *)
+            echo "Unknown command: $1"
+            echo "Run 'fast-notification --help' for usage."
+            return 1
+            ;;
+    esac
+}
+
+main "$@"

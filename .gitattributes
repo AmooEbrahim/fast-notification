@@ -1,0 +1,20 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Scripts must have LF line endings
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Config files
+*.conf text eol=lf
+*.service text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Binary files (do not normalize)
+*.deb binary
+*.png binary
+*.jpg binary
+*.ico binary
